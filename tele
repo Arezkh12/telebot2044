@@ -1,0 +1,337 @@
+import hashlib
+import time
+import requests
+import telebot
+
+Token = "7383421174:AAHU-lrISfEyqIhzeUtnvh3F6cm40oOXv3U"
+
+API_URL = 'https://www.smile.one'
+EMAIL = 'khuraijamaresh0@gmail.com'
+UID = '2450649'
+KEY = '0f12b61af8b9508514fee34aade96443'
+bot=telebot.TeleBot(Token)
+
+current_time = int(time.time())
+product = "mobilelegends"
+productid = "13"
+
+def generate_sign(params, key):
+  sorted_params = sorted(params.items())
+  sign_str = ''.join([f"{k}={v}&" for k, v in sorted_params])
+  sign_str = sign_str + key
+  return hashlib.md5(hashlib.md5(sign_str.encode()).hexdigest().encode()).hexdigest()
+
+params = {
+  "uid": UID,
+  "email": EMAIL,
+  "product": product,
+  "time": current_time,
+}
+
+sign = generate_sign(params, KEY)
+params["sign"] = sign
+
+def get_sign(params: dict) -> str:
+  """Generate the sign parameter."""
+  m_key = KEY
+  sorted_params = sorted(params.items())
+  str_to_hash = '&'.join(f'{k}={v}' for k, v in sorted_params) + '&' + m_key
+  return hashlib.md5(hashlib.md5(str_to_hash.encode()).hexdigest().encode()).hexdigest()
+
+def post_request(api_url, params):
+    response = requests.post(api_url, data=params)
+    return response.json()
+
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    bot.reply_to(message, 
+    """
+    ꯍꯦꯂꯣ ꯅꯨꯡꯁꯤꯖꯔꯕ꯫
+    /brlsc - brl product list
+    /brlbalance - brl balance
+    /buy1 - buy brl product
+    /phpsc - php product list
+    /phpbalance - php balance
+    /buy2 - buy php product
+    /role - id checker
+
+    """
+    )
+
+product_api_url1 = "https://www.smile.one/br/smilecoin/api/productlist"
+product_response1 = post_request(product_api_url1, params)
+print(product_response1)
+
+def get_product_list1() -> list:
+        """Fetch the product list from the Smile One API."""
+        current_time = int(time.time())
+        params = {
+            'uid': UID,
+            'email': EMAIL,
+            'product': product,
+            'time': current_time
+        }
+        params['sign'] = get_sign(params)
+
+        response = requests.post(product_api_url1, data=params)
+        response_data1 = response.json()
+
+        if response_data1['status'] == 200:
+            return response_data1['data']['product']
+        else:
+            return []
+@bot.message_handler(commands=['brlsc'])
+def send_product_list1(message):
+        """Send the product list when the /products command is issued."""
+        product_list1 = get_product_list1()
+
+        if not product_list1:
+            bot.reply_to(message, 'Failed to fetch product list.')
+            return
+
+        response_text1 = 'MLBB Available products:\n\n'
+        for product in product_list1:
+            response_text1 += f"ID {product['id']} | {product['spu']} |  🪙 {product['price']}\n"
+
+        bot.reply_to(message, response_text1)
+
+product_api_url2 = "https://www.smile.one/ph/smilecoin/api/productlist"
+product_response2 = post_request(product_api_url2, params)
+print(product_response1)
+
+def get_product_list2() -> list:
+    """Fetch the product list from the Smile One API."""
+    current_time = int(time.time())
+    params = {
+        'uid': UID,
+        'email': EMAIL,
+        'product': product,
+        'time': current_time
+    }
+    params['sign'] = get_sign(params)
+
+    response = requests.post(product_api_url2, data=params)
+    response_data2 = response.json()
+
+    if response_data2['status'] == 200:
+        return response_data2['data']['product']
+    else:
+        return []
+
+@bot.message_handler(commands=['phpsc'])
+def send_product_list2(message):
+          """Send the product list when the /products command is issued."""
+          product_list2 = get_product_list2()
+
+          if not product_list2:
+              bot.reply_to(message, 'Failed to fetch product list.')
+              return
+
+          response_text2 = 'MLBB Available products:\n\n'
+          for product in product_list2:
+              response_text2 += f"ID {product['id']} | {product['spu']} |  🪙 {product['price']}\n"
+
+          bot.reply_to(message, response_text2)
+
+
+
+def get_role_info(userid: str, zoneid: str) -> dict:
+    """Fetch role information from the Smile One API."""
+    current_time = int(time.time())
+    params = {
+        'uid': UID,
+        'email': EMAIL,
+        'userid': userid,
+        'zoneid': zoneid,
+        'product': product,
+        "productid": productid,
+        'time': current_time
+    }
+    params['sign'] = get_sign(params)
+
+    response = requests.post(f"https://www.smile.one/smilecoin/api/getrole", data=params)
+    response_data = response.json()
+
+    if response_data['status'] == 200:
+        return response_data
+    else:
+        return {'status': response_data['status'], 'message': response_data['message']}
+
+@bot.message_handler(commands=['role'])
+def request_role_info(message):
+          """Request role information when the /role command is issued."""
+          try:
+              _, userid, zoneid = message.text.split()
+              role_info = get_role_info(userid, zoneid)
+
+              if role_info['status'] == 200:
+                  response_text = (
+                      f"IGN: {role_info['username']}\n"
+                      f"ID: {userid}\n"
+                      f"SERVER: {zoneid}\n"
+                      f"Change Price: {role_info['change_price']}\n"
+                  )
+              else:
+                  response_text = f"Failed to fetch role info: {role_info['message']}"
+          except ValueError:
+              response_text = "Please provide the user ID and zone ID separated by a space (e.g., /role 211326009 9112)"
+          except Exception as e:
+              response_text = f"Error: {str(e)}"
+
+          bot.reply_to(message, response_text)
+
+
+def create_order1(userid: str, zoneid: str, productid: str) -> dict:
+      """Create an order1 using the Smile One API."""
+      current_time = int(time.time())
+      params = {
+          'uid': UID,
+          'email': EMAIL,
+          'userid': userid,
+          'zoneid': zoneid,
+          'product': 'mobilelegends',
+          'productid': productid,
+          'time': current_time
+      }
+      params['sign'] = get_sign(params)
+
+      response1 = requests.post(f"https://www.smile.one/smilecoin/api/createorder", data=params)
+      response_data1 = response1.json()
+
+      print(f"Create Order1 API Response: {response_data1}")
+
+      if response_data1['status'] == 200:
+          return response_data1
+      else:
+          return {'status': response_data1['status'], 'message': response_data1['message']}
+
+@bot.message_handler(commands=['buy1'])
+def request_purchase_info1(message):
+    """Request purchase information when the /buy1 command is issued."""
+    try:
+        _, userid, zoneid, productid = message.text.split()
+        order_info = create_order1(userid, zoneid, productid)
+
+        if order_info['status'] == 200:
+            response_text1 = (
+                f"Order created successfully!\n"
+                f"ORDER ID: {order_info['order_id']}\n"
+                f"ID: {userid}\n"
+                f"SERVER: {zoneid}\n"
+                "RECHARGE SUCCESSFUL"
+            )
+        else:
+            response_text1 = f"Failed to create order: {order_info['message']}"
+    except ValueError:
+        response_text1 = "Provide ID,ZoneID & Product ID separated by a space (e.g., /buy1 211326009 9112 12)"
+    except Exception as e:
+
+        response_text1 = f"Error: {str(e)}"
+    bot.reply_to(message, response_text1)
+
+def create_order2(userid: str, zoneid: str, productid: str) -> dict:
+    """Create an order using the Smile One API."""
+    current_time = int(time.time())
+    params = {
+        'uid': UID,
+        'email': EMAIL,
+        'userid': userid,
+        'zoneid': zoneid,
+        'product': 'mobilelegends',
+        'productid': productid,
+        'time': current_time
+    }
+    params['sign'] = get_sign(params)
+
+    response2 = requests.post(f"https://www.smile.one/ph/smilecoin/api/createorder", data=params)
+    response_data2 = response2.json()
+
+    print(f"Create Order2 API Response: {response_data2}")
+
+    if response_data2['status'] == 200:
+        return response_data2
+    else:
+        return {'status': response_data2['status'], 'message': response_data2['message']}
+
+@bot.message_handler(commands=['buy2'])
+def request_purchase_info2(message):
+    """Request purchase information when the /buy2 command is issued."""
+    try:
+        parts = message.text.split(maxsplit=1)
+        if len(parts) < 2:
+            raise ValueError("Insufficient parameters")
+
+        # Assuming bulk order command format: /buy2 id1 zoneid1 productid1;id2 zoneid2 productid2;...
+        bulk_orders = parts[1].split(';')
+        response_text2 = ""
+
+        for order in bulk_orders:
+            userid, zoneid, productid = order.split()
+            order_info = create_order2(userid, zoneid, productid)
+            if order_info['status'] == 200:
+                response_text2 += (
+                    f"Order created successfully!\n"
+                    f"ORDER ID: {order_info['order_id']}\n"
+                    f"ID: {userid}\n"
+                    f"SERVER: {zoneid}\n"
+                    "RECHARGE SUCCESSFUL\n\n"
+                )
+            else:
+                response_text2 += f"Failed to create order for ID: {userid}, SERVER: {zoneid}. Reason: {order_info['message']}\n\n"
+    except ValueError:
+        response_text2 = "Provide bulk orders in the format: /buy2 id1 zoneid1 productid1;id2 zoneid2 productid2;..."
+    except Exception as e:
+        response_text2 = f"Error: {str(e)}"
+    bot.reply_to(message, response_text2)
+
+def get_points1()-> dict:
+        """Fetch points information from the Smile One API."""
+        current_time = int(time.time())
+        params = {
+            'email': EMAIL,
+            'uid': UID,
+            'email': EMAIL,
+            'product': product,
+            'time': current_time
+        }
+        params['sign'] = generate_sign(params, KEY)
+
+        response0 = post_request("https://www.smile.one/br/smilecoin/api/querypoints", params)
+
+        return response0
+
+@bot.message_handler(commands=['brlbalance'])
+def request_points_info1(message):
+        points_info = get_points1()
+        if points_info.get('status') == 200:
+            response0_text = f"Your points: {points_info['smile_points']}\nMessage: success"
+        else:
+            response0_text = f"Failed to fetch points: {points_info.get('message')}"
+
+        bot.reply_to(message, response0_text)
+def get_points2()-> dict:
+    """Fetch points information from the Smile One API."""
+    current_time = int(time.time())
+    params = {
+        'email': EMAIL,
+        'uid': UID,
+        'email': EMAIL,
+        'product': product,
+        'time': current_time
+    }
+    params['sign'] = generate_sign(params, KEY)
+
+    response0 = post_request("https://www.smile.one/ph/smilecoin/api/querypoints", params)
+
+    return response0
+
+@bot.message_handler(commands=['phpbalance'])
+def request_points_info2(message):
+    points_info = get_points2()
+    if points_info.get('status') == 200:
+        response0_text = f"Your points: {points_info['smile_points']}\nMessage: success"
+    else:
+        response0_text = f"Failed to fetch points: {points_info.get('message')}"
+
+    bot.reply_to(message, response0_text)
+bot.polling()
